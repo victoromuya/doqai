@@ -1,0 +1,4 @@
+.env
+.github/
+services/data/
+services/__pycache__/
