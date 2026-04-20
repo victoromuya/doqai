@@ -2,7 +2,7 @@
 
 A Django REST API for document intelligence: upload documents (PDF/image/text), extract text with OCR/NLP, classify document type, and extract entities/amounts.
 
-## 🔧 Features
+## Features
 
 - Document upload endpoint (`POST /api/v1/upload/`)
 - Text extraction from `.txt`, `.pdf`, `.jpg`, `.jpeg`, `.png`
@@ -13,7 +13,7 @@ A Django REST API for document intelligence: upload documents (PDF/image/text), 
 - Amount extraction (currency and numeric patterns)
 - Data model `DocumentResult` persisted in Django DB
 
-## 📦 Tech stack
+## Tech stack
 
 - Python 3.11+ (recommended)
 - Django 5.2
@@ -76,7 +76,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-## 🗂️ Model training (optional)
+##  Model training (optional)
 
 The model can be retrained on a custom dataset organized by class in `data/<label>/*.pdf|.txt|.jpg`.
 
@@ -86,7 +86,7 @@ python services/train.py
 
 Generated model file: `services/models/model.pkl` (or `model/model.pkl` depending on config).
 
-## 🧪 API Usage
+##  API Usage
 
 - URL: `http://127.0.0.1:8000/api/v1/upload/`
 - Method: `POST`
@@ -118,7 +118,7 @@ curl -X POST "http://127.0.0.1:8000/api/v1/upload/" \
 }
 ```
 
-## 🛠️ Project structure
+##  Project structure
 
 - `api/`: Django app with endpoint logic
 - `services/`: ML/NLP pipelines
@@ -130,14 +130,14 @@ curl -X POST "http://127.0.0.1:8000/api/v1/upload/" \
 - `Docai_api/`: Django project config
 - `db.sqlite3`: local database
 
-## ⚠️ Notes
+##  Notes
 
 - `MEDIA_ROOT` must exist and be writable by app
 - `pytesseract` may require system binary (`tesseract`) installed in PATH
 - `pdf2image` requires `poppler` installed (e.g., `choco install poppler` on Windows)
 - `services/tasks.py` currently runs sync; replace with async task queue (Celery/RQ) if needed
 
-## 📄 Testing
+##  Testing
 
 No dedicated tests yet; add tests in `api/tests.py`.
 
@@ -145,9 +145,3 @@ No dedicated tests yet; add tests in `api/tests.py`.
 python manage.py test
 ```
 
-## 🗂️ Improvements
-
-- Add endpoint for listing `DocumentResult` records
-- Persist returned fields in DB in `api/views.py` after processing
-- Add Swagger/OpenAPI docs (drf_yasg already in `INSTALLED_APPS`)
-- Add CI and linting
