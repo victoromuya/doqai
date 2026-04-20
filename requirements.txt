@@ -10,4 +10,3 @@ PyPDF2
 pytesseract
 scikit-learn
 spacy
-tensorflow==2.16.1

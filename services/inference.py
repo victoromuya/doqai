@@ -3,7 +3,11 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from tensorflow.keras.models import load_model
+
+try:
+    from tensorflow.keras.models import load_model
+except ImportError:
+    load_model = None
 
 from services.preprocess import (
     clean_text,
@@ -40,6 +44,11 @@ class DocumentInference:
         """Lazy load model artifacts on first use."""
         if self._loaded:
             return
+
+        if load_model is None:
+            raise RuntimeError(
+                "TensorFlow is not installed, so the deep-learning classifier is unavailable."
+            )
         
         if not self.model_path.exists():
             raise FileNotFoundError(

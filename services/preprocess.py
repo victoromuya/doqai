@@ -3,9 +3,15 @@ import re
 from typing import List
 
 import spacy
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.preprocessing.text import Tokenizer
-from tensorflow.keras.preprocessing.text import tokenizer_from_json
+
+try:
+    from tensorflow.keras.preprocessing.sequence import pad_sequences
+    from tensorflow.keras.preprocessing.text import Tokenizer
+    from tensorflow.keras.preprocessing.text import tokenizer_from_json
+except ImportError:  # TensorFlow is optional in deployment environments.
+    Tokenizer = None
+    pad_sequences = None
+    tokenizer_from_json = None
 
 DEFAULT_MAX_WORDS = 15000
 DEFAULT_MAX_SEQUENCE_LENGTH = 256
@@ -45,6 +51,8 @@ def normalize_texts(texts: List[str]) -> List[str]:
 
 
 def build_tokenizer(texts: List[str], num_words: int = DEFAULT_MAX_WORDS) -> Tokenizer:
+    if Tokenizer is None:
+        raise RuntimeError("TensorFlow is required to build tokenizers for model training.")
     tokenizer = Tokenizer(num_words=num_words, oov_token="<OOV>")
     tokenizer.fit_on_texts(texts)
     return tokenizer
@@ -53,6 +61,8 @@ def build_tokenizer(texts: List[str], num_words: int = DEFAULT_MAX_WORDS) -> Tok
 def texts_to_padded_sequences(
     texts: List[str], tokenizer: Tokenizer, max_length: int = DEFAULT_MAX_SEQUENCE_LENGTH
 ):
+    if pad_sequences is None:
+        raise RuntimeError("TensorFlow is required to convert texts into padded sequences.")
     sequences = tokenizer.texts_to_sequences(texts)
     return pad_sequences(sequences, maxlen=max_length, padding="post", truncating="post")
 
@@ -63,6 +73,8 @@ def save_tokenizer(tokenizer: Tokenizer, path: str) -> None:
 
 
 def load_tokenizer(path: str) -> Tokenizer:
+    if tokenizer_from_json is None:
+        raise RuntimeError("TensorFlow is required to load the deep-learning tokenizer.")
     with open(path, "r", encoding="utf-8") as handle:
         data = handle.read()
     return tokenizer_from_json(data)

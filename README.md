@@ -25,6 +25,7 @@ A Django REST API for document intelligence: upload documents (PDF/image/text), 
 - pdf2image
 - scikit-learn
 - joblib
+- TensorFlow (optional for local training/deep-learning inference)
 
 ## 🚀 Setup
 
@@ -41,6 +42,12 @@ cd Docai_api
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+Optional: install TensorFlow locally if you want to use the deep-learning training/inference pipeline instead of the scikit-learn fallback.
+
+```bash
+pip install tensorflow==2.16.1
 ```
 
 3. Install spaCy model
