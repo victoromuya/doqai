@@ -45,6 +45,13 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
     "https://docai-api-if8x.onrender.com",
+    "http://127.0.0.1:8000",
+    "http://10.242.146.115:8080"
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://localhost:\d+$",
+    r"^https?://127\.0\.0\.1:\d+$",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
