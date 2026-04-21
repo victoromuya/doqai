@@ -164,6 +164,26 @@ def train(data_dir: str = "data", limit_per_class: Optional[int] = 50):
     evaluate_predictions(y_true, y_pred, label_encoder.classes_)
 
     model.save(MODEL_FILE)
+
+    #----------------------------------------------------------------
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+
+    # FIX: Enable Select TF Ops and disable Tensor List lowering
+    converter.target_spec.supported_ops = [
+        tf.lite.OpsSet.TFLITE_BUILTINS, # enable TFLite ops
+        tf.lite.OpsSet.SELECT_TF_OPS   # enable TensorFlow ops
+    ]
+    converter._experimental_lower_tensor_list_ops = False
+
+    try:
+        tflite_model = converter.convert()
+        with open(f"{MODEL_DIR}/document_classifier.tflite", "wb") as f:
+            f.write(tflite_model)
+        print("TFLite model converted successfully!")
+    except Exception as e:
+        print(f"TFLite Conversion failed: {e}")
+  #----------------------------------------------------------------
+
     save_artifacts(tokenizer, label_encoder)
 
     print(f"Model and artifacts saved to {MODEL_DIR}")
@@ -171,4 +191,4 @@ def train(data_dir: str = "data", limit_per_class: Optional[int] = 50):
 
 
 if __name__ == "__main__":
-    train(DATA_DIR, limit_per_class=50)
+    train(DATA_DIR, limit_per_class=10)

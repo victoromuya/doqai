@@ -11,3 +11,8 @@ pytesseract
 scikit-learn
 spacy
 gunicorn
+
+--extra-index-url https://github.io
+tflite-runtime
+# Pre-downloaded Spacy model to avoid memory spikes
+https://github.com

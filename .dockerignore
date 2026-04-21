@@ -1,0 +1,6 @@
+.github/workflows/deploy.yml 
+*.pyo
+*.pyd
+*.sqlite3
+.env
+.DS_Store
