@@ -9,10 +9,14 @@ Pillow
 PyPDF2
 pytesseract
 scikit-learn
-spacy
 gunicorn
 
+# ... other requirements ...
+spacy
+
+# FIX: Explicitly name the package and provide the direct binary URL
+en_core_web_sm @ https://github.com
+
+# Lightweight TFLite for Render
 --extra-index-url https://github.io
 tflite-runtime
-# Pre-downloaded Spacy model to avoid memory spikes
-https://github.com
