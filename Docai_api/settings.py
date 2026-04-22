@@ -50,7 +50,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://doqai.onrender.com",
     "http://127.0.0.1:8000",
     "http://10.242.146.115:8080",
-    "http://localhost:5173"
+    "http://localhost:5173",
     "https://doqai-frontend.vercel.app"
 ]
 

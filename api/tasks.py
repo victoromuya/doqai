@@ -12,7 +12,7 @@ from huggingface_hub import InferenceClient, login
 
 
 HF_TOKEN = settings.DOC_HF_TOKEN
-login(token=HF_TOKEN, add_to_git_credential=False)
+# login(token=HF_TOKEN, add_to_git_credential=False)
 
 # Initialize the client (only once at the top of your file)
 client = InferenceClient(token=HF_TOKEN)
