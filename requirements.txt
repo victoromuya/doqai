@@ -3,16 +3,9 @@ Django>=5.2,<6
 djangorestframework>=3.14
 django-cors-headers
 drf-yasg
-joblib
 numpy==1.26.4
-pdf2image
-Pillow
-PyPDF2
-pytesseract
-scikit-learn
 gunicorn
 python-dotenv
 huggingface_hub
-spacy
 whitenoise
 # ... other requirements ...
