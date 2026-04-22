@@ -8,14 +8,14 @@ from services.extractor import extract_entities, extract_amount
 
 from services.preprocess import clean_text, tokenize
 from api.models import DocumentResult
-from huggingface_hub import InferenceClient
+from huggingface_hub import InferenceClient, login
 
 
-
-
+HF_TOKEN = settings.DOC_HF_TOKEN
+login(token=HF_TOKEN, add_to_git_credential=False)
 
 # Initialize the client (only once at the top of your file)
-client = InferenceClient(token=settings.DOC_HF_TOKEN)
+client = InferenceClient(token=HF_TOKEN)
 
 def classify_document(raw_text):
     # Ensure text isn't empty and stay within token limits
@@ -29,7 +29,7 @@ def classify_document(raw_text):
         result = client.zero_shot_classification(
             text=text_to_classify,
             candidate_labels=["professional resume or CV", "business invoice or receipt",
-                               "formal letter or email or memo",
+                               "formal letter or email or memo", "a questionnaire or survey", "a news article or blog post", "a social media post or comment",
                               "handwritten note", "academic research paper", "legal contract", "general correspondence"],
             model="facebook/bart-large-mnli",
             hypothesis_template="This document is a {}.",

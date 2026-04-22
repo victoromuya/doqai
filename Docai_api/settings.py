@@ -49,7 +49,8 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "https://doqai.onrender.com",
     "http://127.0.0.1:8000",
-    "http://10.242.146.115:8080"
+    "http://10.242.146.115:8080",
+    "http://localhost:5173"
 ]
 
 # CORS_ALLOWED_ORIGIN_REGEXES = [
