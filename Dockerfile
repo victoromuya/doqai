@@ -18,4 +18,4 @@ COPY . .
 RUN python -m spacy download en_core_web_sm
 
 # run migrations + start server
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000 && python manage.py collectstatic --noinput"]

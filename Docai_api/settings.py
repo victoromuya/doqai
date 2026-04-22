@@ -41,20 +41,21 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
-    "https://docai-api-if8x.onrender.com",
+    "https://doqai.onrender.com",
     "http://127.0.0.1:8000",
     "http://10.242.146.115:8080"
 ]
 
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https?://localhost:\d+$",
-    r"^https?://127\.0\.0\.1:\d+$",
-]
+# CORS_ALLOWED_ORIGIN_REGEXES = [
+#     r"^https?://localhost:\d+$",
+#     r"^https?://127\.0\.0\.1:\d+$",
+# ]
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -145,6 +146,8 @@ USE_TZ = True
 STATIC_URL = "static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
