@@ -11,8 +11,8 @@ def extract_via_cloud_ocr(file_path):
         'apikey': OCR_API_KEY,
         'language': 'eng',
         'isOverlayRequired': False,
-        'OCREngine': 2,    # Engine 2 is superior for alphanumeric data like invoices
-        'isTable': True,   # This preserves the table/line structure
+        'OCREngine': 2,
+        'isTable': True,
     }
     
     try:
@@ -26,16 +26,29 @@ def extract_via_cloud_ocr(file_path):
         
         result = response.json()
         
+        # 1. Check for basic API success
         if result.get('OCRExitCode') == 1:
-            # OCR.space returns a list of results (one per page for PDFs)
-            return " ".join([page['ParsedText'] for page in result['ParsedResults']])
+            pages = result.get('ParsedResults', [])
+            
+            # 2. Check page count
+            if len(pages) > 3:
+                return {
+                    "error": "Document too long",
+                    "message": f"This document has {len(pages)} pages. Please upload a document with 3 pages or fewer."
+                }
+            
+            # 3. Return joined text if within limit
+            extracted_text = " ".join([page['ParsedText'] for page in pages])
+            return extracted_text
+            
         else:
-            print(f"OCR Error: {result.get('ErrorMessage')}")
-            return ""
+            error_msg = result.get('ErrorMessage', ['Unknown OCR error'])[0]
+            print(f"OCR Error: {error_msg}")
+            return {"error": "OCR failure", "message": error_msg}
             
     except Exception as e:
         print(f"Cloud OCR Request failed: {e}")
-        return ""
+        return {"error": "Connection error", "message": "The OCR service timed out or failed."}
 
 def extract_from_txt(file_path):
     """Handle .txt files locally (Low RAM)."""

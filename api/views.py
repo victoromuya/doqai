@@ -5,7 +5,7 @@ from rest_framework.parsers import MultiPartParser
 from .serializers import DocumentUploadSerializer
 from django.conf import settings
 import os
-from .tasks import process_document
+from .tasks import process_document, rewrite_cv_section
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
@@ -28,43 +28,89 @@ class DocumentUploadView(APIView):
         }
     )
     def post(self, request):
+        # Initialize file_path as None to prevent crashes in the 'finally' block
+        file_path = None
+        
         try:
-            print(request.FILES)
             serializer = DocumentUploadSerializer(data=request.data)
-            if serializer.is_valid():
-                file_obj = serializer.validated_data['file']
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-                # Ensure uploads folder exists
-                upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
-                os.makedirs(upload_dir, exist_ok=True)
+            file_obj = serializer.validated_data['file']
+            job_description = serializer.validated_data.get("job_description", "")
 
-                # Avoid overwriting files with the same name
-                base_name, extension = os.path.splitext(file_obj.name)
-                file_path = os.path.join(upload_dir, file_obj.name)
-                counter = 1
-                while os.path.exists(file_path):
-                    file_path = os.path.join(upload_dir, f"{base_name}_{counter}{extension}")
-                    counter += 1
-
-                with open(file_path, 'wb+') as f:
-                    for chunk in file_obj.chunks():
-                        f.write(chunk)
-
-                # Trigger async processing
-                task = process_document(file_path)
+            # 1. Save file temporarily
+            upload_dir = os.path.join(settings.MEDIA_ROOT, "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
             
+            # Use a hex prefix to ensure the filename is unique and safe
+            safe_filename = f"{os.urandom(4).hex()}_{file_obj.name}"
+            file_path = os.path.join(upload_dir, safe_filename)
 
+            with open(file_path, 'wb+') as f:
+                for chunk in file_obj.chunks():
+                    f.write(chunk)
+
+            # 2. Extract and Classify
+            task_result = process_document(file_path)
+
+            # 3. Curate Error Messages for the User
+            if isinstance(task_result, dict) and "error" in task_result:
+                error_msg = str(task_result.get("message", ""))
+                
+                # Specifically curate the 3-page limit error
+                if "maximum page limit of 3" in error_msg.lower():
+                    return Response({
+                        "error": "Document Too Long",
+                        "message": "To ensure fast and accurate processing, please upload a document with 3 pages or fewer.",
+                        "code": "PAGE_LIMIT_EXCEEDED"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Handle other general extraction/OCR errors
                 return Response({
-                    "message": "Document processed successfully",
-                    "document_type": task.get("document_type"),
-                    "confidence": task.get("confidence"),
-                    "entities": task.get("entities"),
-                    "amount": task.get("amount"),
-                    "text": task.get("text"),
-                }, status=status.HTTP_202_ACCEPTED)
+                    "error": "Processing Failed",
+                    "message": "We couldn't read this document. Please ensure the file is not password protected and try again.",
+                    "details": error_msg
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # 4. Trigger CV rewriting ONLY if it's a resume
+            rewrite_cv = None
+            doc_type = task_result.get("document_type", "").lower()
+            
+            if "resume" in doc_type or "cv" in doc_type:
+                if job_description:
+                    # Use the stronger model for rewriting
+                    rewrite_cv = rewrite_cv_section(task_result.get("text"), job_description)
+                else:
+                    rewrite_cv = "Job description missing. Please provide one to tailor your CV."
+
+            else:
+                # FIX: Explicitly tell the user why no rewrite was performed
+                rewrite_cv = "CV rewriting is only available for documents classified as Resumes. This document was identified as a " + doc_type + "."
+
+            # 5. Return Successful Response
+            return Response({
+                "message": "Document processed successfully",
+                "document_type": task_result.get("document_type"),
+                "confidence": task_result.get("confidence"),
+                "entities": task_result.get("entities"),
+                "amount": task_result.get("amount"),
+                "text": task_result.get("text"),
+                "rewritten_cv": rewrite_cv,
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"Internal System Error: {e}")
+            return Response({
+                "error": "System Error", 
+                "message": "An unexpected error occurred on our server. Please try again later."
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         finally:
-        # Step 2: Delete the file regardless of success or error
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Cleanup: Ensure file is deleted from Render storage even if the process failed
+            if file_path and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as cleanup_error:
+                    print(f"Cleanup failed for {file_path}: {cleanup_error}")
+
