@@ -1,12 +1,8 @@
 # from celery import shared_task
 from pathlib import Path
-
+import re
 from django.conf import settings
-
 from services.file_loader import extract_text
-from services.extractor import extract_entities, extract_amount
-
-from services.preprocess import clean_text, tokenize
 from api.models import DocumentResult
 from huggingface_hub import InferenceClient, login
 
@@ -16,6 +12,45 @@ HF_TOKEN = settings.DOC_HF_TOKEN
 
 # Initialize the client (only once at the top of your file)
 client = InferenceClient(token=HF_TOKEN)
+
+
+def extract_entities(text):
+    """
+    Uses Hugging Face API to extract Persons and Organizations.
+    Uses Regex for Dates and Money (to save API calls/latency).
+    """
+    # 1. Quick Regex for Dates and Money (Save API tokens)
+    data = {
+        "dates": re.findall(r'\b(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4})|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4}\b', text),
+        "money": re.findall(r'[\$₦€]\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?', text),
+        "organizations": [],
+        "persons": []
+    }
+
+    # 2. Hugging Face API for Persons and Organizations
+    try:
+        # NER models have a 512 token limit (~700-800 characters)
+        # We only need the first part of the doc to find the main entities
+        api_result = client.token_classification(
+            text[:800], 
+            model="dslim/bert-base-NER"
+        )
+
+        for entity in api_result:
+            # B-PER/I-PER = Person, B-ORG/I-ORG = Organization
+            word = entity['word'].replace('##', '') # Clean up BERT wordpieces
+            label = entity['entity_group'] 
+            
+            if label == 'PER' and word not in data["persons"]:
+                data["persons"].append(word)
+            elif label == 'ORG' and word not in data["organizations"]:
+                data["organizations"].append(word)
+
+    except Exception as e:
+        print(f"HF Entity Extraction failed: {e}")
+
+    return data, text
+
 
 def classify_document(raw_text):
     # Ensure text isn't empty and stay within token limits
@@ -55,12 +90,14 @@ def process_document(file_path):
     # Step 2: Classify using the separate function
     doc_type, confidence = classify_document(raw_text)
 
-    if confidence < 0.5:  # Threshold for uncertain classifications
+    if confidence < 0.3:  # Threshold for uncertain classifications
         doc_type = "Uncertain (require review)"
 
     # Step 3: Extract structured data
     entities, cleaned_text = extract_entities(raw_text)
-    amount = extract_amount(raw_text)
+    amount = entities["money"][0] if entities["money"] else None
+
+  
 
     # Step 4: Persist result
     try:
@@ -70,6 +107,7 @@ def process_document(file_path):
             confidence=confidence,
             entities=entities,
             amount=amount,
+            
         )
     except Exception as db_e:
         print(f"Database save failed: {db_e}")
@@ -80,4 +118,5 @@ def process_document(file_path):
         "entities": entities,
         "text": cleaned_text,
         "amount": amount,
+       
     }
