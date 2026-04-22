@@ -1,9 +1,8 @@
 # from celery import shared_task
 from pathlib import Path
-from pyexpat import model
 import re
 from django.conf import settings
-from services.file_loader import extract_text
+from .file_loader import extract_text
 from api.models import DocumentResult
 from huggingface_hub import InferenceClient, login
 
@@ -64,7 +63,7 @@ def extract_entities(text):
 
 
 def classify_document(raw_text):
-    # Truncate text (DistilBERT has a 512 token limit, ~600-800 chars is safe)
+   
     text_to_classify = raw_text[:700].strip() if raw_text else ""
     
     if not text_to_classify:
