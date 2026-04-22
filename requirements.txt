@@ -1,3 +1,4 @@
+
 Django>=5.2,<6
 djangorestframework>=3.14
 django-cors-headers
@@ -10,13 +11,8 @@ PyPDF2
 pytesseract
 scikit-learn
 gunicorn
+requests
+python-dotenv
+huggingface_hub
 
 # ... other requirements ...
-spacy
-
-# FIX: Explicitly name the package and provide the direct binary URL
-en_core_web_sm @ https://github.com
-
-# Lightweight TFLite for Render
---extra-index-url https://github.io
-tflite-runtime

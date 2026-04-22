@@ -51,7 +51,7 @@ class DocumentUploadView(APIView):
 
             # Trigger async processing
             task = process_document(file_path)
-            print(task)
+          
 
             return Response({
                 "message": "Document processed successfully",
