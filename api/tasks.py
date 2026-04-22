@@ -2,14 +2,12 @@
 from pathlib import Path
 
 from django.conf import settings
-from services.classifier import DocumentClassifier
+
 from services.file_loader import extract_text
 from services.extractor import extract_entities, extract_amount
 
 from services.preprocess import clean_text, tokenize
 from api.models import DocumentResult
-import requests
-import time 
 from huggingface_hub import InferenceClient
 
 

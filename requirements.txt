@@ -11,8 +11,7 @@ PyPDF2
 pytesseract
 scikit-learn
 gunicorn
-requests
 python-dotenv
 huggingface_hub
-
+spacy
 # ... other requirements ...
