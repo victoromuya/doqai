@@ -29,7 +29,7 @@ def classify_document(raw_text):
         result = client.zero_shot_classification(
             text=text_to_classify,
             candidate_labels=["professional resume or CV", "business invoice or receipt",
-                               "formal letter or email or memo", "a questionnaire or survey", "a news article or blog post", "a social media post or comment",
+                               "formal letter or email or memo",
                               "handwritten note", "academic research paper", "legal contract", "general correspondence"],
             model="facebook/bart-large-mnli",
             hypothesis_template="This document is a {}.",
