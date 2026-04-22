@@ -172,3 +172,26 @@ def rewrite_cv_section(cv_text, job_description):
         print(f"Rewriter Error: {e}")
         return cv_text  # Fallback to original text
 
+
+
+def only_extract(file_path):
+    # Step 1: Extract text
+    result = extract_text(file_path)
+    
+    # Check if extract_text returned an error dictionary (e.g., 3-page limit)
+    if isinstance(result, dict) and "error" in result:
+        return result  # Returns {"error": "...", "message": "..."} directly to the user
+
+    raw_text = result
+    if not raw_text or not raw_text.strip():
+        return {"error": "Extraction failure", "message": "No text could be extracted from this file."}
+
+    # Step 3: Extract structured data
+    entities, cleaned_text = extract_entities(raw_text)
+
+    return {
+       
+        "entities": entities,
+        "text": cleaned_text,
+       
+    }
