@@ -26,6 +26,7 @@ def compute_relevance_spread(results):
     return float(np.std(distances))
 
 
+
 def retrieval_quality_score(results):
     confidence = compute_retrieval_confidence(results)
     spread = compute_relevance_spread(results)
