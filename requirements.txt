@@ -9,6 +9,7 @@ python-dotenv
 huggingface_hub
 whitenoise
 requests
+chromadb
 # ... other requirements ...
 # torch==2.6.0+cpu
 # torchvision==0.21.0+cpu
