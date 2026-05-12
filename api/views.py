@@ -1,15 +1,20 @@
+import logging
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
-from .serializers import DocumentUploadSerializer
+from .serializers import DocumentUploadSerializer, DocumentQuerySerializer
 from django.conf import settings
 import os
 from .tasks import process_document, rewrite_cv_section, only_extract
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.decorators import api_view
+from rag.rag_service import answer_query
 
+import time
+
+logger = logging.getLogger(__name__)
 
 
 class DocumentUploadView(APIView):
@@ -178,3 +183,134 @@ def extractor(request):
                     print(f"Cleanup failed for {file_path}: {cleanup_error}")
 
     return Response({"error": "Method not allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+
+class AskDocumentView(APIView):
+
+    @swagger_auto_schema(
+        tags=["RAG Query"],
+        operation_description="""
+        Query uploaded documents using Retrieval-Augmented Generation (RAG).
+
+        The system performs:
+        - Semantic embedding generation
+        - Vector similarity retrieval
+        - Context grounding
+        - AI response generation
+
+        Only information retrieved from indexed documents
+        is used to generate the response.
+        """,
+        request_body=DocumentQuerySerializer,
+        responses={
+            200: openapi.Response(
+                description="Successful RAG response",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "answer": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description="AI-generated grounded answer"
+                        ),
+                        "sources": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Items(
+                                type=openapi.TYPE_STRING
+                            ),
+                            description="Retrieved document chunks used as context"
+                        )
+                    }
+                ),
+                examples={
+                    "application/json": {
+                        "answer": "The invoice specifies that payment is due within 30 days of issue.",
+                        "sources": [
+                            "Payment terms: Net 30 days from invoice date.",
+                            "Late payments may incur additional charges."
+                        ]
+                    }
+                }
+            ),
+
+            400: openapi.Response(
+                description="Validation Error",
+                examples={
+                    "application/json": {
+                        "query": [
+                            "This field is required."
+                        ]
+                    }
+                }
+            ),
+
+            500: openapi.Response(
+                description="Internal Server Error",
+                examples={
+                    "application/json": {
+                        "error": "System Error",
+                        "message": "An unexpected error occurred."
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request):
+
+        serializer = DocumentQuerySerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        query = serializer.validated_data["query"]
+
+
+        try:
+            start_time = time.time()
+            result = answer_query(query)
+
+            # Safety check: ensure result is valid
+            if not result:
+                return Response(
+                    {
+                        "error": "EmptyResponse",
+                        "message": "No result returned from RAG pipeline."
+                    },
+                    status=status.HTTP_502_BAD_GATEWAY
+                )
+
+            response_time = round(time.time() - start_time, 3)
+
+            return Response(
+                {
+                    "data": result,
+                    "meta": {
+                        "response_time_seconds": response_time
+                    },
+                  
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except ValueError as ve:
+            logger.warning(f"Validation error: {ve}")
+            return Response(
+                {
+                    "error": "ValidationError",
+                    "message": str(ve)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except Exception as e:
+            logger.exception(f"RAG Query Error: {e}")
+            return Response(
+                {
+                    "error": "InternalServerError",
+                    "message": "Failed to process query."
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

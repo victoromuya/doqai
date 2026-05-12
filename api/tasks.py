@@ -6,6 +6,11 @@ from .file_loader import extract_text
 from api.models import DocumentResult
 from huggingface_hub import InferenceClient, login
 
+from rag.chunking import chunk_text
+from rag.embedding_service import generate_passage_embedding
+from rag.vectordb import collection
+import uuid
+
 
 HF_TOKEN = settings.DOC_HF_TOKEN
 # login(token=HF_TOKEN, add_to_git_credential=False)
@@ -18,30 +23,30 @@ import re
 
 def extract_entities(text):
     """
-    Extracts entities using Regex (Money/Dates) and Hugging Face API (Persons/Orgs).
-    Cleans up BERT wordpieces for readable names.
+    Extracts expanded entities using Regex and Hugging Face API.
+    Added: Locations, Miscellaneous, Emails, and Phone Numbers.
     """
-    # 1. Regex Extraction (Fast & No RAM)
     data = {
         "dates": re.findall(r'\b(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4})|(?:\d{4}[/-]\d{1,2}[/-]\d{1,2})|(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? \d{4})\b', text),
         "money": re.findall(r'[\$₦€]\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?', text),
+        # New Regex categories (Zero RAM usage)
+        "emails": re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text),
+        "phones": re.findall(r'\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}', text),
         "organizations": [],
-        "persons": []
+        "persons": [],
+        "locations": [],
+        "misc": [] # Includes events, nationalities, products, etc.
     }
 
-    # 2. Hugging Face API for NER
     if text and len(text.strip()) > 0:
         try:
-            # Using the official token_classification method
             api_result = client.token_classification(
                 text[:800], 
                 model="dslim/bert-base-NER",
-                # aggregation_strategy="simple" merges "Vic" + "##tor" into "Victor" automatically
                 aggregation_strategy="simple" 
             )
 
             for entity in api_result:
-                # 'entity_group' is used when aggregation_strategy is active
                 label = entity.get('entity_group')
                 word = entity.get('word', '').strip()
                 
@@ -49,16 +54,20 @@ def extract_entities(text):
                     continue
 
                 if label == 'PER':
-                    if word not in data["persons"]:
-                        data["persons"].append(word)
+                    if word not in data["persons"]: data["persons"].append(word)
                 elif label == 'ORG':
-                    if word not in data["organizations"]:
-                        data["organizations"].append(word)
+                    if word not in data["organizations"]: data["organizations"].append(word)
+                # New Label Mappings
+                elif label == 'LOC':
+                    if word not in data["locations"]: data["locations"].append(word)
+                elif label == 'MISC':
+                    if word not in data["misc"]: data["misc"].append(word)
 
         except Exception as e:
             print(f"HF Entity Extraction Error: {e}")
 
     return data, text
+
 
 
 
@@ -104,6 +113,7 @@ def classify_document(raw_text):
 def process_document(file_path):
     # Step 1: Extract text
     result = extract_text(file_path)
+
     
     # Check if extract_text returned an error dictionary (e.g., 3-page limit)
     if isinstance(result, dict) and "error" in result:
@@ -112,7 +122,7 @@ def process_document(file_path):
     raw_text = result
     if not raw_text or not raw_text.strip():
         return {"error": "Extraction failure", "message": "No text could be extracted from this file."}
-
+    
     # Step 2: Classify using the separate function
     doc_type, confidence = classify_document(raw_text)
 
@@ -185,7 +195,10 @@ def only_extract(file_path):
     raw_text = result
     if not raw_text or not raw_text.strip():
         return {"error": "Extraction failure", "message": "No text could be extracted from this file."}
-
+    
+    document_id = str(uuid.uuid4())
+    index_document(document_id, raw_text) # Index and Add the document in ChromaDB for RAG retrieval
+    
     # Step 3: Extract structured data
     entities, cleaned_text = extract_entities(raw_text)
 
@@ -195,3 +208,19 @@ def only_extract(file_path):
         "text": cleaned_text,
        
     }
+
+
+def index_document(document_id, raw_text):
+    chunks = chunk_text(raw_text)
+
+    for i, chunk in enumerate(chunks):
+        embedding = generate_passage_embedding(chunk)
+
+        collection.add(
+            ids=[f"{document_id}_{i}"],
+            documents=[chunk],
+            embeddings=[embedding],
+            metadatas=[{
+                "document_id": document_id
+            }]
+        )
