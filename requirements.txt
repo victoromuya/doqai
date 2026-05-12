@@ -10,6 +10,6 @@ huggingface_hub
 whitenoise
 requests
 # ... other requirements ...
-torch==2.6.0+cpu
-torchvision==0.21.0+cpu
-sentence-transformers==2.3.0
+# torch==2.6.0+cpu
+# torchvision==0.21.0+cpu
+# sentence-transformers==2.3.0
