@@ -184,6 +184,12 @@ def only_extract(file_path):
         return {"error": "Extraction failure", "message": "No text could be extracted from this file."}
     
     document_id = str(uuid.uuid4())
+    
+    # Clear the existing ChromaDB collection to reset for new upload
+    all_ids = collection.get()['ids']
+    if all_ids:
+        collection.delete(ids=all_ids)
+    
     index_document(document_id, raw_text) # Index and Add the document in ChromaDB for RAG retrieval
     
     # Step 3: Extract structured data
