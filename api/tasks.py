@@ -3,7 +3,6 @@ from pathlib import Path
 import re
 from django.conf import settings
 from .file_loader import extract_text
-from api.models import DocumentResult
 from huggingface_hub import InferenceClient, login
 
 from rag.chunking import chunk_text
@@ -134,18 +133,6 @@ def process_document(file_path):
     
     # Safely extract amount from the dictionary returned by extract_entities
     amount = entities.get("money")[0] if entities.get("money") else None
-
-    # Step 4: Persist result
-    try:
-        DocumentResult.objects.create(
-            file=file_path,
-            document_type=doc_type,
-            confidence=confidence,
-            entities=entities,
-            amount=amount,
-        )
-    except Exception as db_e:
-        print(f"Database save failed: {db_e}")
 
     return {
         "document_type": doc_type,

@@ -4,3 +4,5 @@ services/
 services/data/
 services/__pycache__/
 services/model/document_classifier.keras
+.vscode/
+__pycache__/
